@@ -1,44 +1,86 @@
 import 'package:better_player/better_player.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
+import 'package:persist_ventures/presentation/horizontal_view.dart';
+import 'package:provider/provider.dart';
+
 import 'package:persist_ventures/providers/video_provider.dart';
 import 'package:persist_ventures/utils/app_logger.dart';
-import 'package:provider/provider.dart';
 
 import '../domain/models/video_post.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final int? parentId;
+  const HomePage({
+    required this.parentId,
+    super.key,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
+  late List<VideoPost> currentVideos;
   @override
   void initState() {
-    context.read<VideoProvider>().getMainVideoPosts();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) {
+        if (widget.parentId != null) {
+          // context.read<VideoProvider>().getReplies(widget.parentId!);
+        } else {
+          // context.read<VideoProvider>().getMainVideoPosts();
+        }
+      },
+    );
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     final deviceHeight = MediaQuery.of(context).size.height;
+    final deviceWidth = MediaQuery.of(context).size.width;
     return Scaffold(
       body: Consumer<VideoProvider>(
         builder: (context, videoProvider, child) {
           if (videoProvider.mainVideos == null ||
-              videoProvider.mainVideos!.isEmpty) {
-            return Center(
-              child: CircularProgressIndicator(),
+              (widget.parentId != null &&
+                  videoProvider.repliesVideos == null)) {
+            //to show circular progress indicator while loading
+            //data
+            return AspectRatio(
+              aspectRatio: deviceWidth / deviceHeight,
+              child: Container(
+                color: Colors.black,
+                child: const Center(
+                  heightFactor: 20,
+                  widthFactor: 5,
+                  child: CircularProgressIndicator(
+                    // backgroundColor: Colors.white,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             );
           }
-          return PageView.builder(
-              scrollDirection: Axis.vertical,
-              itemCount: videoProvider.mainVideos!.length,
-              itemBuilder: (context, index) =>
-                  VideoPlayer(videoPost: videoProvider.mainVideos![index]));
+          // currentVideos =
+          //     videoProvider.repliesVideos ?? videoProvider.mainVideos!;
+          // context.read<VideoProvider>().updateHorizontalVideosList(
+          //     context.read<VideoProvider>().horizontalVideosList
+          //       ..add(currentVideos));
+          return const HorizontalPageView(
+              // siblingVideos: currentVideos
+              );
+          //  PageView.builder(
+          //   onPageChanged: (value) {
+          //     AppLogger.logMessage("value on page change -> $value");
+          //   },
+          //   // scrollDirection: Axis.vertical,
+          //   itemCount:2,// currentVideos.length,
+          //   itemBuilder: (context, index) => VideoPlayer(
+          //       deviceHeight: deviceHeight,
+          //       deviceWidth: deviceWidth,
+          //       videoPost: currentVideos[index]),
+          // );
         },
       ),
     );
@@ -48,8 +90,14 @@ class _HomePageState extends State<HomePage> {
 class VideoPlayer extends StatefulWidget {
   // final int? parentVideoId;
   final VideoPost videoPost;
+  final String? parentTitle;
+  final double deviceWidth;
+  final double deviceHeight;
   const VideoPlayer({
     required this.videoPost,
+    required this.deviceHeight,
+    required this.deviceWidth,
+    required this.parentTitle,
     // required this.parentVideoId,
     super.key,
   });
@@ -60,44 +108,47 @@ class VideoPlayer extends StatefulWidget {
 
 class _VideoPlayerState extends State<VideoPlayer> {
   VideoPost get videoPostData => widget.videoPost;
-  BetterPlayerController? _temp;
-  // BetterPlayerListVideoPlayerController? _betterPlayerController;
+  BetterPlayerController? _betterPlayerController;
   @override
   void initState() {
-    // _betterPlayerController = BetterPlayerListVideoPlayerController();
-    _temp = BetterPlayerController(
+    _betterPlayerController = BetterPlayerController(
       BetterPlayerConfiguration(
-        subtitlesConfiguration: BetterPlayerSubtitlesConfiguration(),
+        autoDispose: true,
+
+        placeholder: AspectRatio(
+          aspectRatio: widget.deviceWidth / widget.deviceHeight,
+          child: Image.network(videoPostData.thumbnailUrl ?? ""),
+        ),
+        subtitlesConfiguration: const BetterPlayerSubtitlesConfiguration(),
         fit: BoxFit.cover,
         autoPlay: true,
-        aspectRatio: 9 / 16,
+        aspectRatio: widget.deviceWidth / widget.deviceHeight,
         handleLifecycle: true,
         // autoDispose: false,
       ),
       betterPlayerDataSource: BetterPlayerDataSource(
         BetterPlayerDataSourceType.network,
         videoPostData.videoLink,
-        bufferingConfiguration: BetterPlayerBufferingConfiguration(
+        bufferingConfiguration: const BetterPlayerBufferingConfiguration(
             minBufferMs: 2000,
             maxBufferMs: 10000,
             bufferForPlaybackMs: 1000,
             bufferForPlaybackAfterRebufferMs: 2000),
       ),
     );
-    super.initState();
-
     // WidgetsBinding.instance.addPostFrameCallback(
-    //   (_) {
-    //     if (mounted) {
-    //       _betterPlayerController?.play();
+    //   (timeStamp) {
+    //     if (videoPostData.childVideoCount > 0) {
+    //       context.read<VideoProvider>().addPlaceHolderToHorizontalList();
     //     }
     //   },
     // );
+    super.initState();
   }
 
   @override
   void dispose() {
-    _temp?.dispose();
+    _betterPlayerController?.dispose();
     super.dispose();
   }
 
@@ -108,43 +159,108 @@ class _VideoPlayerState extends State<VideoPlayer> {
     return Consumer<VideoProvider>(
       builder: (context, videoProvider, child) {
         return GestureDetector(
-          onHorizontalDragEnd: (details) async {
-            if (details.primaryVelocity != null) {
-              if (details.primaryVelocity! > 0) {
-                //left swiped
-                AppLogger.logMessage("left Swipe detected");
-                //to do: show parent video
-                if (videoPostData.parentVideoId != null) {
-                  Navigator.pop(context);
-                }
-              } else if (details.primaryVelocity! < 0) {
-                AppLogger.logMessage("right Swipe detected");
-                //right swiped
-                //to do: show response video
-                if (videoPostData.childVideoCount > 0) {
-                  await context
-                      .read<VideoProvider>()
-                      .getReplies(videoPostData.id);
-                  if (mounted) {
-                    AppLogger.logMessage(
-                        "replies.first id -> ${context.read<VideoProvider>().repliesVideos!.first}");
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) => VideoPlayer(
-                        videoPost:
-                            context.read<VideoProvider>().repliesVideos!.first,
+          // onHorizontalDragEnd: (details) async {
+          //   if (details.primaryVelocity != null) {
+          //     if (details.primaryVelocity! > 0) {
+          //       //left swiped
+          //       //to do: show parent video if exists
+          //       if (videoPostData.parentVideoId != null) {
+          //         AppLogger.logMessage(
+          //             "left Swipe detected , parentid -> ${videoPostData.toString()}");
+          //         Navigator.pop(context);
+          //       }
+          //     } else if (details.primaryVelocity! < 0) {
+          //       AppLogger.logMessage("right Swipe detected");
+          //       //right swiped
+          //       //to do: show responses video
+          //       if (videoPostData.childVideoCount > 0) {
+          //         // await context
+          //         //     .read<VideoProvider>()
+          //         //     .getReplies(videoPostData.id);
+          //         if (mounted) {
+          //           // ignore: use_build_context_synchronously
+          //           Navigator.of(context).push(MaterialPageRoute(
+          //               builder: (context) =>
+          //                   HomePage(parentId: videoPostData.id)));
+          //         }
+          //       }
+          //     }
+          //   }
+          // },
+          child: Stack(
+            children: [
+              BetterPlayer(
+                controller: _betterPlayerController!,
+              ),
+              Positioned(
+                  bottom: deviceHeight * 0.09,
+                  left: 20,
+                  child: SizedBox(
+                    width: deviceWidth,
+                    height: deviceHeight * 0.08,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(videoPostData.title,
+                                overflow: TextOverflow.visible,
+                                softWrap: true,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge!
+                                    .copyWith(color: Colors.white)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+              if (widget.parentTitle != null)
+                Positioned(
+                    top: deviceHeight * 0.05,
+                    // left: 20,
+                    child: Container(
+                      color: Colors.grey.shade100.withOpacity(0.5),
+                      width: deviceWidth,
+                      height: deviceHeight * 0.15,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        // mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(children: [
+                                TextSpan(
+                                    text: "Response to \n",
+                                    style: TextStyle(color: Colors.purple)),
+                                TextSpan(
+                                    text: widget.parentTitle,
+                                    // overflow: TextOverflow.visible,
+                                    // softWrap: true,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyLarge!
+                                        .copyWith(
+                                            color: Colors.black,
+                                            overflow: TextOverflow.ellipsis))
+                              ]),
+                            ),
+                          ),
+                          TextButton(
+                              onPressed: () {},
+                              child: Text(
+                                "X",
+                                style: TextStyle(
+                                    fontSize: 20, color: Colors.black),
+                              ))
+                        ],
                       ),
-                    ));
-                  }
-                }
-              }
-            }
-          },
-          child: BetterPlayer(
-            controller: _temp!,
+                    ))
+            ],
           ),
         );
 
-        Container(
+        SizedBox(
             height: deviceHeight,
             width: deviceWidth,
             child:
@@ -173,7 +289,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
                 //   betterPlayerListVideoPlayerController: _betterPlayerController,
                 // )
                 BetterPlayer(
-              controller: _temp!,
+              controller: _betterPlayerController!,
             )
             // .
             // network(

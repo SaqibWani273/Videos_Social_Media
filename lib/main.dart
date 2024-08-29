@@ -29,7 +29,8 @@ class MyApp extends StatelessWidget {
                 ApiRepositoryImpl(apiService: context.read<ApiService>())),
         ChangeNotifierProvider(
             create: (context) =>
-                VideoProvider(apiRepository: context.read<ApiRepositoryImpl>()))
+                VideoProvider(apiRepository: context.read<ApiRepositoryImpl>())
+                  ..getMainVideoPosts())
       ],
       child: MaterialApp(
         home: Scaffold(body: MyWidget()),
@@ -49,7 +50,7 @@ class MyWidget extends StatelessWidget {
             onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => HomePage(),
+                  builder: (context) => HomePage(parentId: null),
                 )),
             child: Text("Start")),
       ),

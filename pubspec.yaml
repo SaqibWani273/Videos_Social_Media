@@ -19,6 +19,7 @@ dependencies:
   json_annotation: ^4.9.0
   provider: ^6.1.2
   better_player: ^0.0.84
+  dartz: ^0.10.1
 
 dev_dependencies:
   flutter_test:
