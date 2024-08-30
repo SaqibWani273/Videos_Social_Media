@@ -7,13 +7,21 @@ class ApiRepositoryImpl implements ApiRepository {
 
   ApiRepositoryImpl({required this.apiService});
 
-  @override
-  Future<List<VideoPost>> fetchMainVideoPosts() {
-    return apiService.getMainVideoPosts();
-  }
+  // @override
+  // Future<List<VideoPost>> fetchMainVideoPosts() {
+  //   return apiService.getMainVideoPosts();
+  // }
+
+  // @override
+  // Future<List<VideoPost>> fetchRepliesOfVideo({required int id}) {
+  //   return apiService.getRepliesOfVideo(id: id);
+  // }
 
   @override
-  Future<List<VideoPost>> fetchRepliesOfVideo({required int id}) {
-    return apiService.getRepliesOfVideo(id: id);
+  Future<List<VideoPost>> fetchVideoPosts({int? parentId}) {
+    if (parentId == null) {
+      return apiService.getMainVideoPosts();
+    }
+    return apiService.getRepliesOfVideo(id: parentId);
   }
 }

@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:persist_ventures/data/datasource/remote/api_service.dart';
 import 'package:persist_ventures/data/repositories/api_repository_impl.dart';
-import 'package:persist_ventures/domain/repositories/api_repository.dart';
 import 'package:persist_ventures/presentation/home_page.dart';
 import 'package:persist_ventures/providers/video_provider.dart';
 import 'package:provider/provider.dart';
@@ -30,9 +29,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
             create: (context) =>
                 VideoProvider(apiRepository: context.read<ApiRepositoryImpl>())
-                  ..getMainVideoPosts())
+                  ..fetchVideos(id: null))
       ],
-      child: MaterialApp(
+      child: const MaterialApp(
         home: Scaffold(body: MyWidget()),
       ),
     );
@@ -50,9 +49,9 @@ class MyWidget extends StatelessWidget {
             onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => HomePage(parentId: null),
+                  builder: (context) => const HomePage(),
                 )),
-            child: Text("Start")),
+            child: const Text("Start")),
       ),
     );
   }
