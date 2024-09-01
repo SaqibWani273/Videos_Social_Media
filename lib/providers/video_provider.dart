@@ -69,24 +69,6 @@ class VideoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-//need to keep track of parent videos index for back-traversal
-  void updateVideosIndex(int index) {
-    //called on vertical-swipe
-    videosIndexRow[videosIndexRow.indexOf(videosIndexRow.last)] = index;
-    notifyListeners();
-  }
-
-  void addNewVideosIndex() {
-    // right-horizontal-swipe
-    videosIndexRow.add(0);
-    notifyListeners();
-  }
-
-  void removeVideosIndex() {
-    //called on left-horizontal-swipe
-    videosIndexRow.removeLast();
-    notifyListeners();
-  }
   // Future<void> getMainVideoPosts() async {
   //   _mainVideos = await apiRepository.fetchMainVideoPosts();
   //   _videosMatrix = _videosMatrix
@@ -150,10 +132,28 @@ column with current video details
 */
 //simple solution:Check if there exists any
 // empty_column for current column
-    if (_videosMatrix.last.grandParentId == parentId) {
-      //remove that
-      _videosMatrix.removeLast();
-    }
+
+    // if (_videosMatrix.last.grandParentId == parentId) {
+    //   //remove that
+    //   _videosMatrix.removeLast();
+    // }
+    /* to do: check this error later->
+    ══ Exception caught by animation library
+     ═════════════════════════════════
+Concurrent modification during iteration:
+ Instance(length:1) of '_GrowableList'.
+ */
+    // for (var element in _videosMatrix) {
+    //   if (element.grandParentId == id || element.grandParentId == parentId) {
+    //     _videosMatrix.remove(element);
+    //   }
+    // }
+    _videosMatrix.removeWhere(
+      (element) => element.grandParentId == parentId,
+    );
+    _videosMatrix.removeWhere(
+      (element) => element.grandParentId == id,
+    );
 
     _videosMatrix.add(VerticalVideos(
       parentId: id,
@@ -164,9 +164,22 @@ column with current video details
     notifyListeners();
   }
 
-  void removeEmptyColumn(int parentId) {
-    if (_videosMatrix.last.grandParentId == parentId) {
-      //remove that
+  void removeEmptyColumn(int parentId, {int? id}) {
+    // if (_videosMatrix.last.grandParentId == parentId ||
+    //     _videosMatrix.last.grandParentId == id) {
+    //   //remove that
+    //   _videosMatrix.removeLast();
+    // }
+    for (var element in _videosMatrix) {
+      if (element.grandParentId == id || element.grandParentId == parentId) {
+        _videosMatrix.removeAt(_videosMatrix.indexOf(element));
+      }
+    }
+    notifyListeners();
+  }
+
+  void removeEmptyGrandChild(int currentPagesLength) {
+    if (currentPagesLength < _videosMatrix.length) {
       _videosMatrix.removeLast();
     }
     notifyListeners();
@@ -213,18 +226,4 @@ column with current video details
 //           videos: []));
 //     notifyListeners();
 //   }
-
-  void removePlaceHolderWithReplacementToHorizontalList(int? grandParentId) {
-    if (grandParentId == null) {
-      //to remove the placeholder of first vertical videos list
-      if (_videosMatrix.length > 1) {
-        _videosMatrix.removeLast();
-      }
-    } else {
-      _videosMatrix.removeWhere(
-        (element) => element.grandParentId == grandParentId,
-      );
-    }
-    notifyListeners();
-  }
 }

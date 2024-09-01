@@ -1,5 +1,8 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:persist_ventures/presentation/widgets/loading_video_widget.dart';
+import 'package:persist_ventures/presentation/widgets/video_tracker.dart';
+import 'package:persist_ventures/utils/app_logger.dart';
 import 'package:provider/provider.dart';
 
 import 'package:persist_ventures/providers/video_provider.dart';
@@ -16,90 +19,148 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // final _verticalPageController = PageController();
-  int previousPage = 0;
+  int i = 2;
+  // late PageController? _verticalPageController;
+  int previousHorizontalPage = 0;
+  int initialPage = 0;
+  // int verticalPage = 0;
+  List<int> previousVerticalPages = [0];
+  // var isLeftSwipe = false;
   @override
   Widget build(BuildContext context) {
-    final deviceHeight = MediaQuery.of(context).size.height;
-    final deviceWidth = MediaQuery.of(context).size.width;
     final videosMatrix = context.watch<VideoProvider>().videosMatrix;
-    final videosIndexRow = context.watch<VideoProvider>().videosIndexRow;
-
     return Scaffold(
         body: videosMatrix.isEmpty
             ? const LoadingVideoWidget()
             :
             //Row of the videoMatrix
             PageView.builder(
+                dragStartBehavior: DragStartBehavior.down,
                 onPageChanged: (page) {
                   //right swipe
-                  if (page > previousPage) {
-                    context.read<VideoProvider>().addNewVideosIndex();
+                  if (page > previousHorizontalPage) {
+                    // context.read<VideoProvider>().addNewVideosIndex();
+                    previousVerticalPages.add(0);
+
+                    //fetch videos if current column is empty
+                    if (videosMatrix[page].videos.isEmpty) {
+                      context.read<VideoProvider>().fetchVideos(
+                            id: videosMatrix[page].parentId,
+                            parentId: videosMatrix[page].grandParentId,
+                            parentVideoTitle:
+                                videosMatrix[page].parentVideoTitle,
+                          );
+                    }
                   } else {
                     //left swipe
-                    context.read<VideoProvider>().removeVideosIndex();
+                    //delete grandchild(if any)
+                    context
+                        .read<VideoProvider>()
+                        .removeEmptyGrandChild(previousVerticalPages.length);
+                    previousVerticalPages.removeLast();
                   }
-                  previousPage = page;
+                  previousHorizontalPage = page;
                 },
+                //   controller: _verticalPageController,
                 itemCount: videosMatrix.length, // currentVideos.length,
                 itemBuilder: (context, horizontalIndex) {
-                  //fetch videos is current column is empty
-                  if (videosMatrix[horizontalIndex].videos.isEmpty) {
-                    context.read<VideoProvider>().fetchVideos(
-                          id: videosMatrix[horizontalIndex].parentId,
-                          parentId: videosMatrix[horizontalIndex].grandParentId,
-                          parentVideoTitle:
-                              videosMatrix[horizontalIndex].parentVideoTitle,
-                        );
-                  }
-
                   return videosMatrix[horizontalIndex].videos.isEmpty
                       ? const LoadingVideoWidget()
                       :
                       //column of the videosMatrix
-                      PageView.builder(
-                          // controller: _verticalPageController,
-                          scrollDirection: Axis.vertical,
-                          onPageChanged: (verticalIndex) {
-                            //need to keep track of current video in column for
-                            //back-traversal
-                            context
-                                .read<VideoProvider>()
-                                .updateVideosIndex(verticalIndex);
-                            if (videosMatrix[horizontalIndex]
-                                    .videos[verticalIndex]
-                                    .childVideoCount ==
-                                0) {
-                              //remove (if exists) empty column
-                              context.read<VideoProvider>().removeEmptyColumn(
-                                  videosMatrix[horizontalIndex].parentId!);
-                            } else {
-                              context
-                                  .read<VideoProvider>()
-                                  .addEmptyVideosColumn(
-                                      parentId: videosMatrix[horizontalIndex]
-                                          .parentId!,
-                                      id: videosMatrix[horizontalIndex]
-                                          .videos[verticalIndex]
-                                          .id,
-                                      videoTitle: videosMatrix[horizontalIndex]
-                                          .videos[verticalIndex]
-                                          .title);
-                            }
+                      ColumnVideos(
+                          updateVerticalIndex: (index) {
+                            setState(() {
+                              previousVerticalPages.last = index;
+                            });
                           },
-                          itemBuilder: (context, verticalIndex) {
-                            return VideoPlayer(
-                              parentTitle: videosMatrix[horizontalIndex]
-                                  .parentVideoTitle, // widget.verticalVideos.parentVideoTitle,
-                              deviceHeight: deviceHeight,
-                              deviceWidth: deviceWidth,
-                              videoPost: videosMatrix[horizontalIndex]
-                                  .videos[verticalIndex],
-                            );
-                          },
-                          itemCount:
-                              videosMatrix[horizontalIndex].videos.length,
+                          initialPage:
+                              previousVerticalPages.length == horizontalIndex
+                                  ? 0
+                                  : previousVerticalPages[horizontalIndex],
+                          verticalVideos: videosMatrix[horizontalIndex],
                         );
                 }));
+  }
+}
+
+class ColumnVideos extends StatefulWidget {
+  const ColumnVideos(
+      {super.key,
+      required this.initialPage,
+      required this.verticalVideos,
+      required this.updateVerticalIndex});
+  final Function(int) updateVerticalIndex;
+  final int initialPage;
+  final VerticalVideos verticalVideos;
+
+  @override
+  State<ColumnVideos> createState() => _ColumnVideosState();
+}
+
+class _ColumnVideosState extends State<ColumnVideos> {
+  late PageController pageController;
+
+  @override
+  void initState() {
+    pageController = PageController(initialPage: widget.initialPage);
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var deviceHeight = MediaQuery.of(context).size.height;
+    var deviceWidth = MediaQuery.of(context).size.width;
+    return PageView.builder(
+      controller: pageController,
+      scrollDirection: Axis.vertical,
+      onPageChanged: (verticalPageIndex) {
+        widget.updateVerticalIndex(verticalPageIndex);
+        //need to keep track of current video in column for
+        //back-traversal
+        // previousVerticalPages.last = verticalPageIndex;
+
+        if (widget.verticalVideos.videos[verticalPageIndex].childVideoCount ==
+            0) {
+          //remove (if exists) empty column
+          context.read<VideoProvider>().removeEmptyColumn(
+                widget.verticalVideos.parentId!,
+                id: widget.verticalVideos.videos[verticalPageIndex].id,
+              );
+        } else {
+          context.read<VideoProvider>().addEmptyVideosColumn(
+              parentId: widget.verticalVideos.parentId!,
+              id: widget.verticalVideos.videos[verticalPageIndex].id,
+              videoTitle:
+                  widget.verticalVideos.videos[verticalPageIndex].title);
+        }
+      },
+      itemBuilder: (context, verticalIndex) {
+        return VideoPlayer(
+          videoTracker: Container(),
+          //  VideoTracker(
+          //   row: previousHorizontalPage,
+          //   col: verticalIndex,
+          //   hasChild: videosMatrix[horizontalIndex]
+          //           .videos[verticalIndex]
+          //           .childVideoCount >
+          //       0,
+          // ),
+          parentTitle: widget.verticalVideos
+              .parentVideoTitle, // widget.ColumnVideos.parentVideoTitle,
+          deviceHeight: deviceHeight,
+          deviceWidth: deviceWidth,
+          videoPost: widget.verticalVideos.videos[verticalIndex],
+        );
+      },
+      itemCount: widget.verticalVideos.videos.length,
+    );
   }
 }
