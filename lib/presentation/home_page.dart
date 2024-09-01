@@ -51,6 +51,18 @@ class _HomePageState extends State<HomePage> {
                                 videosMatrix[page].parentVideoTitle,
                           );
                     }
+                    //need it after back traversal
+                    else if (videosMatrix[page].videos.first.childVideoCount >
+                            0 &&
+                        videosMatrix.last.parentId !=
+                            videosMatrix[page].videos.first.id) {
+                      //add empty column
+                      context.read<VideoProvider>().addEmptyVideosColumn(
+                          parentId:
+                              videosMatrix[page].videos.first.parentVideoId,
+                          id: videosMatrix[page].videos.first.id,
+                          videoTitle: videosMatrix[page].videos.first.title);
+                    }
                   } else {
                     //left swipe
                     //delete grandchild(if any)
@@ -69,6 +81,7 @@ class _HomePageState extends State<HomePage> {
                       :
                       //column of the videosMatrix
                       ColumnVideos(
+                          horizontalIndex: horizontalIndex,
                           updateVerticalIndex: (index) {
                             setState(() {
                               previousVerticalPages.last = index;
@@ -85,14 +98,17 @@ class _HomePageState extends State<HomePage> {
 }
 
 class ColumnVideos extends StatefulWidget {
-  const ColumnVideos(
-      {super.key,
-      required this.initialPage,
-      required this.verticalVideos,
-      required this.updateVerticalIndex});
+  const ColumnVideos({
+    super.key,
+    required this.initialPage,
+    required this.verticalVideos,
+    required this.updateVerticalIndex,
+    required this.horizontalIndex,
+  });
   final Function(int) updateVerticalIndex;
   final int initialPage;
   final VerticalVideos verticalVideos;
+  final int horizontalIndex;
 
   @override
   State<ColumnVideos> createState() => _ColumnVideosState();
@@ -144,15 +160,13 @@ class _ColumnVideosState extends State<ColumnVideos> {
       },
       itemBuilder: (context, verticalIndex) {
         return VideoPlayer(
-          videoTracker: Container(),
-          //  VideoTracker(
-          //   row: previousHorizontalPage,
-          //   col: verticalIndex,
-          //   hasChild: videosMatrix[horizontalIndex]
-          //           .videos[verticalIndex]
-          //           .childVideoCount >
-          //       0,
-          // ),
+          videoTracker: VideoTracker(
+            rowNo: verticalIndex + 1,
+            colNo: widget.horizontalIndex + 1,
+            totalRows: widget.verticalVideos.videos.length,
+            hasChild:
+                widget.verticalVideos.videos[verticalIndex].childVideoCount > 0,
+          ),
           parentTitle: widget.verticalVideos
               .parentVideoTitle, // widget.ColumnVideos.parentVideoTitle,
           deviceHeight: deviceHeight,
