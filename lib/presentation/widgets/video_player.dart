@@ -43,7 +43,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
         ),
         subtitlesConfiguration: const BetterPlayerSubtitlesConfiguration(),
         fit: BoxFit.cover,
-        // autoPlay: true,
+        autoPlay: true,
         aspectRatio: deviceWidth / deviceHeight,
         handleLifecycle: true,
         // autoDispose: false,
@@ -76,7 +76,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
           controller: _betterPlayerController!,
         ),
         Positioned(
-            top: deviceHeight * 0.2,
+            top: deviceHeight * 0.3,
             right: deviceWidth * 0.1,
             child: videoTracker),
         Positioned(

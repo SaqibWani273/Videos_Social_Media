@@ -17,58 +17,59 @@ class VideoTracker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     int rows = rowNo + (totalRows - rowNo > 3 ? 3 : totalRows - rowNo);
-    return Container();
-    // return Row(
-    //   crossAxisAlignment: CrossAxisAlignment.start,
-    //   children: List.generate(
-    //     row + 1, //list is 0 indexed
-    //     (index) {
-    //       if (index == row)
-    //         return Column(
-    //           crossAxisAlignment: CrossAxisAlignment.start,
-    //           children: List.generate(
-    //             col + 1,
-    //             (index) {
-    //               if (index == col)
-    //                 return Row(
-    //                   children: [
-    //                     Container(
-    //                       height: 10,
-    //                       width: 10,
-    //                       decoration: BoxDecoration(
-    //                           borderRadius: BorderRadius.circular(10),
-    //                           color: Colors.blue),
-    //                     ),
-    //                     if (hasChild)
-    //                       Container(
-    //                         height: 10,
-    //                         width: 10,
-    //                         decoration: BoxDecoration(
-    //                             borderRadius: BorderRadius.circular(10),
-    //                             color: Colors.grey),
-    //                       )
-    //                   ],
-    //                 );
-    //               return Container(
-    //                 height: 10,
-    //                 width: 10,
-    //                 decoration: BoxDecoration(
-    //                     borderRadius: BorderRadius.circular(10),
-    //                     color: Colors.grey),
-    //               );
-    //             },
-    //           ),
-    //         );
-    //       return Container(
-    //         height: 10,
-    //         width: 10,
-    //         decoration: BoxDecoration(
-    //           borderRadius: BorderRadius.circular(20),
-    //           color: Colors.grey,
-    //         ),
-    //       );
-    //     },
-    //   ),
-    // );
+    return Row(
+      // mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: List.generate(
+        colNo,
+        (rowIndex) {
+          if (rowIndex + 1 == colNo) {
+            //0-indexed
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: List.generate(
+                rows,
+                (colIndex) {
+                  if (colIndex + 1 == rowNo) {
+                    //0-indexed
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Dot(
+                          color: Colors.white,
+                          radius: 10,
+                        ),
+                        if (hasChild) const Dot()
+                      ],
+                    );
+                  }
+                  return const Dot();
+                },
+              ),
+            );
+          }
+          return const Dot();
+        },
+      ),
+    );
+  }
+}
+
+class Dot extends StatelessWidget {
+  final Color? color;
+  final double? radius;
+  const Dot({super.key, this.color, this.radius});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: radius == null ? EdgeInsets.all(5) : null,
+      height: radius ?? 5,
+      width: radius ?? 5,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: color ?? Colors.blueGrey,
+      ),
+    );
   }
 }
